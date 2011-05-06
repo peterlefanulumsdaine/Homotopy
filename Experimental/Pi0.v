@@ -4,6 +4,8 @@ Require Import Homotopy.
 Require Import Menagerie.
 
 
+(* First some definitions/lemmas which should really be moved to other files *)
+
 Definition isProp (X:Type) := forall {x y : X}, x ~~> y.
 Definition isSet (X:Type) := forall {x y : X}, isProp (x ~~> y). 
 
@@ -19,9 +21,30 @@ Proof.
 Qed.
 
 
+Definition Circle_nondep_rect {X} {x:X} (p : x ~~> x) : Circle -> X.
+  exact (@Circle_rect (fun _ => X) x ((transport_in_trivial_fibration loop x) @ p)).
+Defined.
+
+Definition Circle_nondep_comp_base {X} {x:X} (p : x ~~> x) :
+                                   (Circle_nondep_rect p base ~~> x).
+  unfold Circle_nondep_rect.  apply (Circle_comp_base (P := fun _ => X)).
+Defined.
+
+Definition Circle_nondep_comp_loop {X} {x:X} (p : x ~~> x) :
+                     ! (Circle_nondep_comp_base p)
+                     @ (map_on_paths (Circle_nondep_rect p) loop)
+                     @ (Circle_nondep_comp_base p)
+                   ~~> p.
+Proof.
+  (* a bunch of messing around with naturality and transport_in_trivial_fibration *)
+Admitted.
+
+
+
+
 (*
 Inductive pi0 (X:Type) : Type :=
-    | incl : X -> pi0 X
+    | cmpt : X -> pi0 X
     | contr : forall (l : Circle -> pi0 X), paths (idpath (l base)) (cong l loop)
 *)
 
@@ -60,23 +83,6 @@ Proof.
   intros; unfold pi0_nondep_rect.  exact (pi0_comp_cmpt (P := fun _ => Y) x).
 Defined.  (* maybe could/should leave opaque, since is a path in a set? *)
 
-Definition Circle_nondep_rect {X} {x:X} (p : x ~~> x) : Circle -> X.
-  exact (@Circle_rect (fun _ => X) x ((transport_in_trivial_fibration loop x) @ p)).
-Defined.
-
-Definition Circle_nondep_comp_base {X} {x:X} (p : x ~~> x) :
-                                   (Circle_nondep_rect p base ~~> x).
-  unfold Circle_nondep_rect.  apply (Circle_comp_base (P := fun _ => X)).
-Defined.
-
-Definition Circle_nondep_comp_loop {X} {x:X} (p : x ~~> x) :
-                     ! (Circle_nondep_comp_base p)
-                     @ (map_on_paths (Circle_nondep_rect p) loop)
-                     @ (Circle_nondep_comp_base p)
-                   ~~> p.
-  (* a bunch of messing around with naturality and transport_in_trivial_fibration *)
-Admitted.
-
 
 Lemma if_circles_contract_then_loops_contract {X : Type} :
         (forall (l : Circle -> X), (map_on_paths l loop) ~~> (idpath (l base)))
@@ -85,9 +91,9 @@ Proof.
   intros contr x p.
   set (p_as_circle := Circle_nondep_rect p). 
   set (almost_goal := contr p_as_circle).
-(* roughly:
+(* plan:
     p
- ~~>    [by !Circle_nondep_comp_loop and some messing around]
+ ~~>    [by ! Circle_nondep_comp_loop]
     (! Circle_nondep_comp_base p) @ (map_on_paths p_as_circle loop) @ (Circle_nondep_comp_base p)
  ~~>    [by almost_goal]
     (! Circle_nondep_comp_base p) @ (idpath (p_as_circle base)) @ (Circle_nondep_comp_base p)
@@ -101,11 +107,21 @@ Proof.
   path_via ((! Circle_nondep_comp_base p) @ (idpath (p_as_circle base)) @ (Circle_nondep_comp_base p)).
     (* almost_goal gets used automagically for first subgoal *)
   path_via ( (! Circle_nondep_comp_base p) @ (Circle_nondep_comp_base p)).
-    (* units/inverses are folded away automagically in both subgoals *)
+    (* units/inverses dealt with automagically in both subgoals *)
 Defined.
 
 Lemma if_loops_contract_then_isset {X : Type} :
-        forall (x:X) (p : x ~~> x), (p ~~> idpath x) 
+        (forall (x:X) (p : x ~~> x), (p ~~> idpath x)) 
         -> isSet X.
 Proof.
   intros contr x y u v.
+  path_via (u @ !v @ v).  path_via (u @ (!v @ v)).
+(* now have 3 subgoals: 
+  u ~~> u @ (!v @ v)
+        u @ (!v @ v) ~~> (u @ !v) @ v
+                         (u @ !v) @ v ~~> v
+solved in the following 3 lines respectively: *)
+  path_via (u @ idpath _).  (* both subgoals auto (by: unitarity ; inverse)  *)
+  apply opposite; apply concat_associativity.
+  path_via (idpath _ @ v).  (* both subgoals auto (by: contr ; unitarity) *)
+Defined.
