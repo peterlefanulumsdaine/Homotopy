@@ -330,6 +330,6 @@ Axiom isInhab_comp_contr :
 (*
 Inductive tr0 (X:Type) : Type :=
     | incl : X -> tr0 X
-    | contr : forall (l : S1 -> X), Paths (refl (l base)) (cong l loop)
+    | contr : forall (l : Circle -> X), Paths (refl (l base)) (cong l loop)
 *)
 
